@@ -185,7 +185,7 @@ class Root(object):
             if cherrypy.request.login:
                 user = cherrypy.request.login
             else:
-                user = "Anonymous"
+                user = "guest"
             self.db[self.database][self.collection].insert({'task_id':taskobj.task_id,'user':user,'task_name':funcname,'args':args,'kwargs':kwargs,'queue':queue,'timestamp':datetime.now()})
         except:
             pass
