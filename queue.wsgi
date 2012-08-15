@@ -5,7 +5,7 @@ elif os.uname()[1] == 'fire.rccc.ou.edu':
     basedir = '/scratch/www/wsgi_sites/'
 elif os.uname()[1] == 'production.cybercommons.org':
     basedir = '/var/www/apps/'
-elif os.uname()[1][:2] == 'ip;
+elif os.uname()[1][:2] == 'ip':
     #running on aws
     basedir = '/var/www_apps/'
 
