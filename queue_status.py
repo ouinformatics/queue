@@ -39,10 +39,10 @@ def update_tasks():
             REGISTERED_TASKS = set()
             for item in i.registered().values():
                 REGISTERED_TASKS.update(item)
-            mc.set(tasks, REGISTERED_TASKS, 10)
+            mc.set(tasks, REGISTERED_TASKS, 30)
             REGISTERED_TASKS = mc.get('REGISTERED_TASKS')
         if not AVAILABLE_QUEUES:
-            mc.set(queues, set([ item[0]['exchange']['name'] for item in i.active_queues().values() ]), 10)
+            mc.set(queues, set([ item[0]['exchange']['name'] for item in i.active_queues().values() ]), 30)
             AVAILABLE_QUEUES = mc.get('AVAILABLE_QUEUES')
     else:
         REGISTERED_TASKS = set()
