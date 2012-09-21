@@ -69,7 +69,7 @@ class Root(object):
     @cherrypy.expose
     @mimetype('text/html')
     def index(self):
-        doc = """<html><body><ul><li><a href="report">report</a></li><li><a href="usertasks">tasks</a></li> </ul></body></html>"""
+        doc = """<html><body><ul><li><a href="run">run</a></li><li><a href="usertasks">tasks</a></li> </ul></body></html>"""
         return doc
     @cherrypy.expose
     @mimetype('text/html')
@@ -119,7 +119,7 @@ class Root(object):
         tresult=db['cybercom_queue_meta'].find({'_id':taskid})
         if not tresult.count() == 0:
             resb['Completed']=str(tresult[0]['date_done'])
-            resb['Result'] = pickle.loads(tresult[0]['result'].encode())
+            resb['Result'] = pickle.loads(tresult[0]['result'])
             try:
                 urlcheck = commands.getoutput("wget --spider " + resb['Result'] + " 2>&1| grep 'Remote file exists'")
                 if urlcheck:
@@ -127,7 +127,7 @@ class Root(object):
             except:
                 pass
             resb['Status'] = tresult[0]['status']
-            resb['Traceback'] =pickle.loads( tresult[0]['traceback'].encode())
+            resb['Traceback'] =pickle.loads( tresult[0]['traceback'])
         for row in res:
             resclone=row
             for k,v in resclone['kwargs'].items():
@@ -213,7 +213,7 @@ class Root(object):
             result = urllib.urlopen("http://fire.rccc.ou.edu/mongo/db_find/cybercom_queue/cybercom_queue_meta/{'spec':{'_id':'" + task_id + "'}}")
             res["tombstone"] = json.loads(result.read())
             if len(res['tombstone']) > 0:
-                res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'].encode())
+                res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'])
             res['status']=AsyncResult(task_id).status
             res['task_id']=task_id
             return json.dumps(res,indent=2)
@@ -224,7 +224,7 @@ class Root(object):
             result = urllib.urlopen("http://fire.rccc.ou.edu/mongo/db_find/cybercom_queue/cybercom_queue_meta/{'spec':{'_id':'" + task_id + "'}}")
             res['tombstone']=json.loads(result.read())
             if len(res['tombstone']) > 0:
-                res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'].encode())
+                res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'])
             res['task_id']=task_id
             return json.dumps(res,indent=2) #result.read()
         return json.dumps({'available_urls':['/<task_id>/','/<task_id>/status/','/<task_id>/tombstone/']},indent=2)
