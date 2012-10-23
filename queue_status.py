@@ -8,6 +8,7 @@ from celery.task.control import inspect
 from pymongo import Connection
 from datetime import datetime
 from Cheetah.Template import Template
+from json_handler import handler
 
 templatepath= os.path.abspath(os.path.join(os.path.dirname(__file__), 'templates'))
 
@@ -39,10 +40,10 @@ def update_tasks():
             REGISTERED_TASKS = set()
             for item in i.registered().values():
                 REGISTERED_TASKS.update(item)
-            mc.set(tasks, REGISTERED_TASKS, 30)
+            mc.set(tasks, REGISTERED_TASKS, 10)
             REGISTERED_TASKS = mc.get('REGISTERED_TASKS')
         if not AVAILABLE_QUEUES:
-            mc.set(queues, set([ item[0]['exchange']['name'] for item in i.active_queues().values() ]), 30)
+            mc.set(queues, set([ item[0]['exchange']['name'] for item in i.active_queues().values() ]), 10)
             AVAILABLE_QUEUES = mc.get('AVAILABLE_QUEUES')
     else:
         REGISTERED_TASKS = set()
@@ -69,7 +70,7 @@ class Root(object):
     @cherrypy.expose
     @mimetype('text/html')
     def index(self):
-        doc = """<html><body><ul><li><a href="run">run</a></li><li><a href="usertasks">tasks</a></li> </ul></body></html>"""
+        doc = """<html><body><ul><li><a href="report">report</a></li><li><a href="usertasks">tasks</a></li> </ul></body></html>"""
         return doc
     @cherrypy.expose
     @mimetype('text/html')
@@ -96,8 +97,12 @@ class Root(object):
             res=db.find({'user':user}).skip((page-1)* int(nPerPage)).limit(int(nPerPage)).sort([('timestamp',-1)]) 
             rows=db.find({'user':user}).count()
         else:
-            res=db.find({'user':user,'task_name':task_name}).skip((page-1) * int(nPerPage)).limit(int(nPerPage)).sort([('timestamp',-1)])
-            rows=db.find({'user':user,'task_name':task_name}).count()
+            if task_name[0]=='[':
+                res=db.find({'user':user,'task_name':{'$in':ast.literal_eval(task_name)}}).skip((page-1) * int(nPerPage)).limit(int(nPerPage)).sort([('timestamp',-1)])
+                rows=db.find({'user':user,'task_name':{'$in':ast.literal_eval(task_name)}}).count()
+            else:
+                res=db.find({'user':user,'task_name':task_name}).skip((page-1) * int(nPerPage)).limit(int(nPerPage)).sort([('timestamp',-1)])
+                rows=db.find({'user':user,'task_name':task_name}).count()
         ePage= int(math.ceil(float(rows)/float(perPage)))
         nameSpace = dict(tasks=res,page=page,endPage=ePage)#tresult)
         #t = Template(file = templatepath + '/usertasks.tmpl', searchList=[nameSpace])
@@ -119,7 +124,7 @@ class Root(object):
         tresult=db['cybercom_queue_meta'].find({'_id':taskid})
         if not tresult.count() == 0:
             resb['Completed']=str(tresult[0]['date_done'])
-            resb['Result'] = pickle.loads(tresult[0]['result'])
+            resb['Result'] = pickle.loads(tresult[0]['result'])#.encode())
             try:
                 urlcheck = commands.getoutput("wget --spider " + resb['Result'] + " 2>&1| grep 'Remote file exists'")
                 if urlcheck:
@@ -127,7 +132,20 @@ class Root(object):
             except:
                 pass
             resb['Status'] = tresult[0]['status']
-            resb['Traceback'] =pickle.loads( tresult[0]['traceback'])
+            resb['Traceback'] =pickle.loads( tresult[0]['traceback'])#.encode())
+            if isinstance(resb['Result'], type(resb)):
+                if 'task_id' in resb['Result']:
+                    sub= True
+                    sub_taskid = resb['Result']['task_id']
+                else:
+                    sub = False
+                    sub_taskid = None
+            else:
+                sub= False
+                sub_taskid = None
+        else:
+            sub = False
+            sub_taskid = None
         for row in res:
             resclone=row
             for k,v in resclone['kwargs'].items():
@@ -141,7 +159,7 @@ class Root(object):
                         resclone['kwargs'][k]=hml
                 except:
                     pass
-        nameSpace = dict(tasks=[resclone],task_id=taskid,tomb=[resb])
+        nameSpace = dict(tasks=[resclone],task_id=taskid,tomb=[resb],haschild=sub,sub_taskid=sub_taskid)
         #t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
         if callback:
             t = Template(file=templatepath + '/result_call.tmpl', searchList=[nameSpace])
@@ -149,6 +167,46 @@ class Root(object):
         else:
             t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
             return t.respond()
+    @cherrypy.expose
+    @mimetype('text/html')
+    def result(self,taskid,callback=None,**kwargs):
+        ''' Generates result page. This description provides provenance of tombstone
+        '''
+        db=self.db[self.database]
+        resb = {}
+        tresult=db['cybercom_queue_meta'].find({'_id':taskid})
+        if not tresult.count() == 0:
+            resb['Completed']=str(tresult[0]['date_done'])
+            resb['Result'] = pickle.loads(tresult[0]['result'])#.encode())
+            try:
+                urlcheck = commands.getoutput("wget --spider " + resb['Result'] + " 2>&1| grep 'Remote file exists'")
+                if urlcheck:
+                    resb['Result']='<a href="' + resb['Result'] + '" target="_blank">' + resb['Result'] + '</a>'
+            except:
+                pass
+            resb['Status'] = tresult[0]['status']
+            resb['Traceback'] =pickle.loads( tresult[0]['traceback'])#.encode())
+            
+        if isinstance(resb['Result'], type(resb)):
+            if 'task_id' in resb['Result']:
+                sub= True
+                sub_taskid = resb['Result']['task_id']
+            else:
+                sub=False
+                sub_taskid = None
+        else:
+            sub=False
+            sub_taskid = None
+        nameSpace = dict(tomb=[resb],haschild=sub,sub_taskid=sub_taskid)
+        if callback:
+            t = Template(file=templatepath + '/tomb_result_call.tmpl', searchList=[nameSpace])
+            return str(callback) + "(" + json.dumps({'html':t.respond()}) + ")"
+        else:
+            t = Template(file=templatepath + '/tomb_result.tmpl', searchList=[nameSpace])
+            return t.respond()
+
+
+
     @cherrypy.expose
     @mimetype('application/json')
     def run(self,*args,**kwargs):
@@ -185,7 +243,7 @@ class Root(object):
             if cherrypy.request.login:
                 user = cherrypy.request.login
             else:
-                user = "guest"
+                user = "Anonymous"
             self.db[self.database][self.collection].insert({'task_id':taskobj.task_id,'user':user,'task_name':funcname,'args':args,'kwargs':kwargs,'queue':queue,'timestamp':datetime.now()})
         except:
             pass
@@ -202,31 +260,32 @@ class Root(object):
             else:
                 return str(callback) + '(' + self.serialize(task_id,type) + ')'
         except Exception as inst:
-            #error = str(type(inst)) + '\n'
-            #error = error + str(inst)
-            return str(inst)#error
+            raise inst
+            #return str(inst)
     def serialize(self,task_id,type):
         if task_id == None:
             return json.dumps({'available_urls':['/<task_id>/','/<task_id>/status/','/<task_id>/tombstone/']},indent=2)
         if type == None:
             res = {}
-            result = urllib.urlopen("http://fire.rccc.ou.edu/mongo/db_find/cybercom_queue/cybercom_queue_meta/{'spec':{'_id':'" + task_id + "'}}")
-            res["tombstone"] = json.loads(result.read())
+            db=self.db[self.database]
+            result= db['cybercom_queue_meta'].find_one({'_id':task_id})
+            res["tombstone"] = [result] 
             if len(res['tombstone']) > 0:
                 res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'])
             res['status']=AsyncResult(task_id).status
             res['task_id']=task_id
-            return json.dumps(res,indent=2)
+            return json.dumps(res,indent=2,default = handler)
         if type.lower() == 'status':
             return json.dumps({"status": AsyncResult(task_id).status},indent=2)
         if type.lower() == 'tombstone':
             res={}
-            result = urllib.urlopen("http://fire.rccc.ou.edu/mongo/db_find/cybercom_queue/cybercom_queue_meta/{'spec':{'_id':'" + task_id + "'}}")
-            res['tombstone']=json.loads(result.read())
+            db=self.db[self.database]
+            result= db['cybercom_queue_meta'].find_one({'_id':task_id})
+            res["tombstone"] = [result]
             if len(res['tombstone']) > 0:
                 res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'])
             res['task_id']=task_id
-            return json.dumps(res,indent=2) #result.read()
+            return json.dumps(res,indent=2,default = handler) 
         return json.dumps({'available_urls':['/<task_id>/','/<task_id>/status/','/<task_id>/tombstone/']},indent=2)
 cherrypy.tree.mount(Root())
 application = cherrypy.tree
