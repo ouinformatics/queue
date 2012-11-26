@@ -115,7 +115,7 @@ def copy_working_dir():
     """
     Shuttle application code from local to remote
     """
-    local('tar --exclude virtpy -czf /tmp/deploy_%(sitename)s.tgz .' % env)
+    local('tar --exclude .git --exclude virtpy -czf /tmp/deploy_%(sitename)s.tgz .' % env)
     put('/tmp/deploy_%(sitename)s.tgz' % env, '%(path)s/deploy_%(sitename)s.tgz' % env)
     run('cd %(path)s; tar -xf deploy_%(sitename)s.tgz; rm deploy_%(sitename)s.tgz' % env)
     local('rm /tmp/deploy_%(sitename)s.tgz' % env)
