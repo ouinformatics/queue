@@ -270,8 +270,15 @@ class Root(object):
             db=self.db[self.database]
             result= db['cybercom_queue_meta'].find_one({'_id':task_id})
             res["tombstone"] = [result] 
+            #try:
             if len(res['tombstone']) > 0:
                 res['tombstone'][0]['result'] = pickle.loads(res['tombstone'][0]['result'])
+                res['tombstone'][0]['traceback'] = pickle.loads(res['tombstone'][0]['traceback'])
+#                try:
+                if 'children' in result:
+                    res['tombstone'][0]['children'] = pickle.loads(res['tombstone'][0]['children'])
+#                except:
+#                    pass
             res['status']=AsyncResult(task_id).status
             res['task_id']=task_id
             return json.dumps(res,indent=2,default = handler)
