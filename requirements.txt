@@ -10,3 +10,4 @@ Cheetah>=2.4.4
 python-dateutil>=1.5
 wsgiref>=0.1.2
 python-memcached
+geojson
