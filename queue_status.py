@@ -168,9 +168,10 @@ class Root(object):
                     pass
         nameSpace = dict(tasks=[resclone],task_id=taskid,tomb=[resb],haschild=sub,sub_taskid=sub_taskid)
         #t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
-        if callback:
-            t = Template(file=templatepath + '/result_call.tmpl', searchList=[nameSpace])
-            return str(callback) + "(" + json.dumps({'html':t.respond()}) + ")"   
+        if callback and outtype == "json":
+            return str(callback) + "(" + json.dumps(nameSpace) + ")"  
+        elif outtype == "json":
+            return json.dumps(nameSpace)
         else:
             t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
             return t.respond()
@@ -221,6 +222,7 @@ class Root(object):
     @cherrypy.expose
     @mimetype('application/json')
     def run(self,*args,**kwargs):
+        """ Run a celery task from web interface """
         REGISTERED_TASKS,AVAILABLE_QUEUES = update_tasks()
         #return REGISTERED_TASKS
         # If no arguments return list of tasks
