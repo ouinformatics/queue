@@ -253,17 +253,31 @@ class Root(object):
         taskobj = send_task( funcname, args=funcargs, kwargs=kwargs, queue=queue, track_started=True )
         #logging tasks performed
         try:
+            # Check if user is authenticated with auth_tkt
             if cherrypy.request.login:
                 user = cherrypy.request.login
             else:
                 user = "Anonymous"
-            self.db[self.database][self.collection].insert({'task_id':taskobj.task_id,'user':user,'task_name':funcname,'args':args,'kwargs':kwargs,'queue':queue,'timestamp':datetime.now()})
+            task_log = {
+                'task_id':taskobj.task_id,
+                'user':user,
+                'task_name':funcname,
+                'args':args,
+                'kwargs':kwargs,
+                'queue':queue,
+                'timestamp':datetime.now()
+            }
+            self.db[self.database][self.collection].insert(task_log)
         except:
-            pass
+            return json.dumps({'status': "error logging task"})
+
         if not callback:
             return json.dumps({'task_id':taskobj.task_id}, indent=2)
         else:
             return str(callback) + "(" + json.dumps({'task_id':taskobj.task_id}, indent=2) + ")"
+
+
+
     @cherrypy.expose
     @mimetype('application/json')
     def task(self,task_id=None,type=None,callback=None,**kwargs):
