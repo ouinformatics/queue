@@ -343,6 +343,13 @@ class Root(object):
                         res['tombstone'][0]['children'] = pickle.loads(res['tombstone'][0]['children'])
             res['task_id']=task_id
             return json.dumps(res,indent=2,default = handler) 
+        if type.lower() == 'result':
+            db=self.db[self.database]
+            result= db[self.tomb_collection].find_one({'_id':task_id})
+            if isinstance(result['result'], Binary):
+                return pickle.loads(result['result'])
+            else:
+                return result['result']
         return json.dumps({'available_urls':['/<task_id>/','/<task_id>/status/','/<task_id>/tombstone/']},indent=2)
 cherrypy.tree.mount(Root())
 application = cherrypy.tree
