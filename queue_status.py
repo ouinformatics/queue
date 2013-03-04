@@ -245,7 +245,7 @@ class Root(object):
         funcargs = args[1:] # Slice out function arguments for passing along to task.
         
         if kwargs.has_key('callback'):
-            callback = kwargs.pop('callback') # pop off callback so it doesn't get passed
+            callback = kwargs.pop('callback') # pop off callback so it doesn't get passed to task
             kwargs.pop('_')
         else:
             callback = None
