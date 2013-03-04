@@ -116,7 +116,7 @@ class Root(object):
             return t.respond()
     @cherrypy.expose
     @mimetype('text/html')
-    def report(self,taskid,callback=None,**kwargs):
+    def report(self,taskid,callback=None,outtype=None,**kwargs):
         ''' Generates task result page. This description provides provenance and all information need to rerun tasks
             taskid is required
         '''
