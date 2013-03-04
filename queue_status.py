@@ -116,11 +116,25 @@ class Root(object):
             return t.respond()
     @cherrypy.expose
     @mimetype('text/html')
-    def report(self,taskid,callback=None,outtype=None,**kwargs):
+    def report(self,taskid=None,callback=None,outtype=None,**kwargs):
         ''' Generates task result page. This description provides provenance and all information need to rerun tasks
             taskid is required
         '''
+                    
         db=self.db[self.database]
+        if not taskid:
+            try:
+                if cherrypy.request.login:
+                    user = cherrypy.request.login
+                else:
+                    user = "guest"
+            except:
+                pass 
+            res=db[self.collection].find({'user':user}).limit(10).sort([('timestamp',-1)])
+            cherrypy.response.headers['Content-Type'] = "application/json"
+            return json.dumps([item for item in res], default=handler, indent=2)
+
+        
         res=db[self.collection].find({'task_id':taskid})
         resb = {}
         tresult=db[self.tomb_collection].find({'_id':taskid})
@@ -169,9 +183,11 @@ class Root(object):
         nameSpace = dict(tasks=[resclone],task_id=taskid,tomb=[resb],haschild=sub,sub_taskid=sub_taskid)
         #t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
         if callback and outtype == "json":
-            return str(callback) + "(" + json.dumps(nameSpace) + ")"  
+            cherrypy.response.headers['Content-Type'] = "application/json"
+            return str(callback) + "(" + json.dumps(nameSpace, default=handler, indent=2) + ")"  
         elif outtype == "json":
-            return json.dumps(nameSpace)
+            cherrypy.response.headers['Content-Type'] = "application/json"
+            return json.dumps(nameSpace, default = handler, indent=2)
         else:
             t = Template(file=templatepath + '/result.tmpl', searchList=[nameSpace])
             return t.respond()
