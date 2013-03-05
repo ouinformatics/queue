@@ -116,7 +116,7 @@ class Root(object):
             return t.respond()
     @cherrypy.expose
     @mimetype('text/html')
-    def report(self,taskid=None,callback=None,outtype=None,**kwargs):
+    def report(self,taskid=None,callback=None,outtype=None,task=None,**kwargs):
         ''' Generates task result page. This description provides provenance and all information need to rerun tasks
             taskid is required
         '''
@@ -129,8 +129,12 @@ class Root(object):
                 else:
                     user = "guest"
             except:
-                pass 
-            res=db[self.collection].find({'user':user}).limit(10).sort([('timestamp',-1)])
+                pass
+            if task:
+                query = { 'user': user, 'task_name': task}
+            else:
+                query = { 'user': user }
+            res=db[self.collection].find(query).limit(10).sort([('timestamp',-1)])
             cherrypy.response.headers['Content-Type'] = "application/json"
             return json.dumps([item for item in res], default=handler, indent=2)
 
