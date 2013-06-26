@@ -74,9 +74,10 @@ class Root(object):
     def index(self):
         doc = """<html><body><ul><li><a href="report">report</a></li><li><a href="usertasks">tasks</a></li> </ul></body></html>"""
         return doc
+    #@cherrypy.expose
+    #@mimetype('text/html')
     @cherrypy.expose
-    @mimetype('application/javascript')
-    def usertasks(self,task_name=None,pageNumber=1,nPerPage=1500,callback=None,**kwargs):
+    def usertasks(self,task_name=None,pageNumber=1,nPerPage=2500,callback=None,**kwargs):
         ''' usertasks returns celery tasks perform and the link to the task result page.
             task_name-  string optional
             pageNumber and nPerPage is optional
@@ -109,9 +110,11 @@ class Root(object):
         nameSpace = dict(tasks=res,page=page,endPage=ePage)#tresult)
         #t = Template(file = templatepath + '/usertasks.tmpl', searchList=[nameSpace])
         if callback:
+            cherrypy.response.headers['Content-Type'] = 'application/javascript'
             t = Template(file = templatepath + '/usertasks_call.tmpl', searchList=[nameSpace])
             return str(callback) + "(" + json.dumps({'html':t.respond()}) + ")"
         else:
+            cherrypy.response.headers['Content-Type'] = 'text/html'
             t = Template(file = templatepath + '/usertasks.tmpl', searchList=[nameSpace])
             return t.respond()
     @cherrypy.expose
