@@ -1,6 +1,6 @@
 import cherrypy
 import json, os, math,commands,ast
-import urllib
+#import urllib
 import pickle
 from celery.result import AsyncResult
 from celery.execute import send_task
@@ -281,6 +281,10 @@ class Root(object):
                 user = cherrypy.request.login
             else:
                 user = "Anonymous"
+            if 'tags' in kwargs:
+                tags = kwargs['tags']
+            else:
+                tags={}
             task_log = {
                 'task_id':taskobj.task_id,
                 'user':user,
@@ -288,7 +292,8 @@ class Root(object):
                 'args':args,
                 'kwargs':kwargs,
                 'queue':queue,
-                'timestamp':datetime.now()
+                'timestamp':datetime.now(),
+                'tags':tags
             }
             self.db[self.database][self.collection].insert(task_log)
         except:
